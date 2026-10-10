@@ -53,7 +53,8 @@ HELP_TEXT = (
     "<b>Qanday ishlataman?</b>\n\n"
     "1. Matn yuboring — konvertatsiya qilingan matn qaytadi.\n"
     "2. <code>.txt</code> fayl yuboring — konvertatsiya qilingan fayl qaytadi (5 MB gacha).\n"
-    "3. Istalgan chatda <code>@bot_nomi matn</code> deb yozing (inline rejim).\n\n"
+    "3. Istalgan chatda <code>@bot_nomi matn</code> deb yozing (inline rejim).\n"
+    "4. Guruhda: meni guruhga qo‘shing, xabarga reply qilib /avto (yoki /yangi, /eski) yozing.\n\n"
     "<b>Yo‘nalish:</b>\n"
     "/avto — matn qaysi alifboda ekanini aniqlab, qarama-qarshisiga o‘giradi (standart)\n"
     "/yangi — har doim eski → yangi\n"
@@ -81,17 +82,47 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(HELP_TEXT, parse_mode=ParseMode.HTML)
 
 
+async def _reply_convert(update: Update, direction: str) -> bool:
+    """Buyruq boshqa xabarga reply qilib yuborilgan bo'lsa, o'sha xabarni o'giradi.
+
+    Guruhlarda ishlatish uchun: do'stingiz xabariga reply qilib /avto yozasiz.
+    Qaytaradi: True — reply bo'lgan va o'girilgan; False — reply emas.
+    """
+    src = update.message.reply_to_message
+    if src is None:
+        return False
+    text = src.text or src.caption
+    if not text:
+        await update.message.reply_text("Bu xabarda matn yo‘q.")
+        return True
+    if direction == "old":
+        result = to_old(text)
+    elif direction == "new":
+        result = to_new(text)
+    else:
+        result, _ = convert_auto(text)
+    for i in range(0, len(result), 4096):
+        await src.reply_text(result[i : i + 4096])
+    return True
+
+
 async def cmd_mode_auto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if await _reply_convert(update, "auto"):
+        return
     context.user_data[MODE_KEY] = "auto"
     await update.message.reply_text("✅ Rejim: avtomatik — alifboni o‘zim aniqlayman")
 
 
 async def cmd_mode_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if await _reply_convert(update, "new"):
+        return
     context.user_data[MODE_KEY] = "new"
     await update.message.reply_text("✅ Rejim: eski alifbo → yangi alifbo (Ö Ğ Ş Ç)")
 
 
 async def cmd_mode_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if await _reply_convert(update, "old"):
+        return
     context.user_data[MODE_KEY] = "old"
     await update.message.reply_text("✅ Rejim: yangi alifbo → eski alifbo (O‘ G‘ Sh Ch)")
 
@@ -163,8 +194,8 @@ def main() -> None:
     app.add_handler(CommandHandler("avto", cmd_mode_auto))
     app.add_handler(CommandHandler("yangi", cmd_mode_new))
     app.add_handler(CommandHandler("eski", cmd_mode_old))
-    app.add_handler(MessageHandler(filters.Document.ALL, on_document))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+    app.add_handler(MessageHandler(filters.Document.ALL & filters.ChatType.PRIVATE, on_document))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, on_text))
     app.add_handler(InlineQueryHandler(on_inline))
     app.add_error_handler(on_error)
     log.info("Bot ishga tushdi")

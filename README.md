@@ -13,6 +13,7 @@ Eski o‘zbek lotin alifbosidagi matnni 2026-yilgi yangi lotin alifbosiga o‘tk
 
 - Matn yuborsangiz — konvertatsiya qilingan matn qaytadi
 - `.txt` fayl yuborsangiz — konvertatsiya qilingan fayl qaytadi
+- Guruhda: botni qo‘shib, xabarga reply qilib `/avto` (yoki `/yangi`, `/eski`) yozing
 - Inline rejim: istalgan chatda `@bot_nomi matn` (BotFather’da `/setinline` orqali yoqiladi)
 - Alifbo avtomatik aniqlanadi: eski matn → yangi, yangi matn → eski (`/avto`, standart)
 - `/yangi` — har doim eski → yangi, `/eski` — har doim yangi → eski
