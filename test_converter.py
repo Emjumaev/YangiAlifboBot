@@ -52,3 +52,21 @@ def test_reverse():
 def test_empty():
     assert to_new("") == ""
     assert to_old("") == ""
+
+
+def test_detect():
+    from converter import detect
+    assert detect("O‘zbekiston shahar") == "old"
+    assert detect("Özbekiston şahar") == "new"
+    assert detect("salom dunyo") == "old"
+    assert detect("") == "old"
+    # aralash matnda ko'pchilik g'olib
+    assert detect("Özbekiston Ğulom Şahar chiroyli") == "new"
+    assert detect("O‘zbekiston G‘ulom shahar çiroyli") == "old"
+
+
+def test_convert_auto():
+    from converter import convert_auto
+    assert convert_auto("O‘zbekiston") == ("Özbekiston", "to_new")
+    assert convert_auto("Özbekiston") == ("O‘zbekiston", "to_old")
+    assert convert_auto("salom") == ("salom", "to_new")

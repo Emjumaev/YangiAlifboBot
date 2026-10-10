@@ -16,7 +16,7 @@ from telegram.ext import (
     filters,
 )
 
-from converter import to_new, to_old
+from converter import convert_auto, to_new, to_old
 
 load_dotenv()
 TOKEN = os.environ.get("BOT_TOKEN")
@@ -30,7 +30,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("yangialifbo")
 
 MAX_FILE_BYTES = 5 * 1024 * 1024  # 5 MB
-MODE_KEY = "mode"  # "new" (default) yoki "old"
+MODE_KEY = "mode"  # "auto" (default), "new" yoki "old"
 
 START_TEXT = (
     "Assalomu alaykum! 👋\n\n"
@@ -40,10 +40,12 @@ START_TEXT = (
     "G‘ g‘ → Ğ ğ\n"
     "Sh sh → Ş ş\n"
     "Ch ch → Ç ç\n\n"
-    "Menga matn yuboring yoki <code>.txt</code> fayl tashlang — javobini qaytaraman.\n\n"
+    "Menga matn yuboring yoki <code>.txt</code> fayl tashlang — alifboni o‘zim aniqlab, "
+    "qarama-qarshi tomonga o‘girib beraman.\n\n"
     "<b>Buyruqlar:</b>\n"
-    "/yangi — eski → yangi (standart)\n"
-    "/eski — yangi → eski (teskari)\n"
+    "/avto — alifboni avtomatik aniqlash (standart)\n"
+    "/yangi — faqat eski → yangi\n"
+    "/eski — faqat yangi → eski\n"
     "/help — yordam"
 )
 
@@ -53,16 +55,22 @@ HELP_TEXT = (
     "2. <code>.txt</code> fayl yuboring — konvertatsiya qilingan fayl qaytadi (5 MB gacha).\n"
     "3. Istalgan chatda <code>@bot_nomi matn</code> deb yozing (inline rejim).\n\n"
     "<b>Yo‘nalish:</b>\n"
-    "/yangi — eski alifbo → yangi alifbo\n"
-    "/eski — yangi alifbo → eski alifbo\n\n"
+    "/avto — matn qaysi alifboda ekanini aniqlab, qarama-qarshisiga o‘giradi (standart)\n"
+    "/yangi — har doim eski → yangi\n"
+    "/eski — har doim yangi → eski\n\n"
     "<b>Eslatma:</b> o‘ va g‘ dagi apostrofning qaysi ko‘rinishi (‘ ’ ' `) ishlatilgani ahamiyatsiz — "
     "hammasini tushunaman. Tutuq belgisi (ma’no, e’lon) o‘zgarmaydi."
 )
 
 
-def _convert(context: ContextTypes.DEFAULT_TYPE, text: str) -> str:
-    mode = context.user_data.get(MODE_KEY, "new")
-    return to_old(text) if mode == "old" else to_new(text)
+def _convert(context: ContextTypes.DEFAULT_TYPE, text: str):
+    """Qaytaradi: (natija, yo'nalish) — yo'nalish "to_new" yoki "to_old"."""
+    mode = context.user_data.get(MODE_KEY, "auto")
+    if mode == "old":
+        return to_old(text), "to_old"
+    if mode == "new":
+        return to_new(text), "to_new"
+    return convert_auto(text)
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -71,6 +79,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(HELP_TEXT, parse_mode=ParseMode.HTML)
+
+
+async def cmd_mode_auto(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    context.user_data[MODE_KEY] = "auto"
+    await update.message.reply_text("✅ Rejim: avtomatik — alifboni o‘zim aniqlayman")
 
 
 async def cmd_mode_new(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -85,7 +98,7 @@ async def cmd_mode_old(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = update.message.text
-    result = _convert(context, text)
+    result, _ = _convert(context, text)
     # Telegram bitta xabarda 4096 belgi qabul qiladi
     for i in range(0, len(result), 4096):
         await update.message.reply_text(result[i : i + 4096])
@@ -108,10 +121,10 @@ async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     except UnicodeDecodeError:
         text = raw.decode("cp1251", errors="replace")
 
-    result = _convert(context, text)
+    result, direction = _convert(context, text)
     out = BytesIO(result.encode("utf-8"))
     stem = name[:-4]
-    suffix = "eski" if context.user_data.get(MODE_KEY) == "old" else "yangi"
+    suffix = "eski" if direction == "to_old" else "yangi"
     out.name = f"{stem}_{suffix}.txt"
     await update.message.reply_document(out, caption="Tayyor ✅")
 
@@ -147,6 +160,7 @@ def main() -> None:
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("avto", cmd_mode_auto))
     app.add_handler(CommandHandler("yangi", cmd_mode_new))
     app.add_handler(CommandHandler("eski", cmd_mode_old))
     app.add_handler(MessageHandler(filters.Document.ALL, on_document))

@@ -81,3 +81,30 @@ def to_old(text: str) -> str:
     # buni ş -> sh almashinuvidan OLDIN qilamiz
     text = re.sub(r"([Ss])([Hh])", r"\1ʼ\2", text)
     return _RE_NEW.sub(repl, text)
+
+
+# --- Avtomatik aniqlash -----------------------------------------------------
+
+_RE_OLD_MARKERS = re.compile(rf"[OoGg][{_APOS}]|[Ss][Hh]|[Cc][Hh]")
+_RE_NEW_MARKERS = re.compile("[ÖöĞğŞşÇç]")
+
+
+def detect(text: str) -> str:
+    """Matn qaysi alifboda ekanini taxmin qiladi: "new" yoki "old".
+
+    Yangi harflar (Ö Ğ Ş Ç) eski belgilardan (o‘ g‘ sh ch) ko'p bo'lsa — "new".
+    Hech qanday belgi bo'lmasa (masalan "salom") — "old" (standart: yangiga o'giriladi).
+    """
+    new_count = len(_RE_NEW_MARKERS.findall(text or ""))
+    old_count = len(_RE_OLD_MARKERS.findall(text or ""))
+    return "new" if new_count > old_count else "old"
+
+
+def convert_auto(text: str):
+    """Alifboni aniqlab qarama-qarshi tomonga o'giradi.
+
+    Qaytaradi: (natija, yo'nalish) — yo'nalish "to_new" yoki "to_old".
+    """
+    if detect(text) == "new":
+        return to_old(text), "to_old"
+    return to_new(text), "to_new"
