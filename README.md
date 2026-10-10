@@ -43,6 +43,14 @@ heroku ps:scale worker=1
 heroku logs --tail
 ```
 
-Ikkita app bor: `yangi-alifbo-bot` (remote `heroku`, @yangialibfo_bot) va `yangi-alifbe-bot` (remote `heroku-2`, @yangi_alifbe_bot). Ikkalasiga ham push qilish: `git push heroku main && git push heroku-2 main`.
+Uchta app bor, hammasi bir xil kod:
+
+| App | Remote | Bot |
+|-----|--------|-----|
+| yangi-alifbo-bot | heroku | @yangialibfo_bot |
+| yangi-alifbe-bot | heroku-2 | @yangi_alifbe_bot |
+| yangi-alibfo-bot | heroku-3 | @yangi_alibfo_bot |
+
+Hammasiga push qilish: `for r in heroku heroku-2 heroku-3; do git push $r main; done`
 
 Bot `worker` dyno sifatida polling rejimida ishlaydi (`Procfile`). Token faqat `heroku config` orqali beriladi, repoda saqlanmaydi.
